@@ -79,7 +79,6 @@ function playAtCurrentFrameInterval() {
         // Hope that makes sense.
          
         then = now - (delta % interval);
-         
         var time_el = (then - first)/1000;
         var counterObj=document.getElementById('counter')
         counterObj.innerHTML = ++counter + 'f / ' + parseInt(time_el) + 's = ' + parseInt(counter/time_el) + 'fps';
