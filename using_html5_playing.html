@@ -1,95 +1,163 @@
-<!DOCTYPE html> 
-<html> 
+<!DOCTYPE html>
+<!-- Sync videos using listener -->
+<html lang="en">
 <head>
-	<style type="text/css">
-		body{
-		  background-color:#222;
-		  color:#ddd;
-		}
-		video {
-		  float: left;
-		  width: 50%;
-		}
-	</style>
-</head>
-<body> 
-  <p id="controls">
-<input id='frameToSet' type="number" value="0" />
-<button onclick="setCurTime()" type="button">Set time current frame</button>
-<button onclick="startPlaying()" type="button">Play every n frames</button>
-<span id="counter"></span>
-
-</p>
-<br>
-<video id="v0" >
-    <source src="_sources/bunny.mp4" />
-  Your browser does not support HTML5 video.
-</video>
-<video id="v1" >
-    <source src="_sources/bunny.mp4" />
-  Your browser does not support HTML5 video.
-</video>
-
+<meta charset=utf-8>
+<title></title>
 <script>
-var fps=24.038; // It will show frames at this speed. This would be the new fps. We need to match it with the recording in order to obtain same result from compounded frames.
-var vid = document.getElementById("v0");
-var vid2 = document.getElementById("v1");
+  var addEvent = (function () {
+  if (document.addEventListener) {
+    return function (el, type, fn) {
+      if (el && el.nodeName || el === window) {
+        el.addEventListener(type, fn, false);
+      } else if (el && el.length) {
+        for (var i = 0; i < el.length; i++) {
+          addEvent(el[i], type, fn);
+        }
+      }
+    };
+  } else {
+      return function (el, type, fn) {
+        if (el && el.nodeName || el === window) {
+          el.attachEvent('on' + type, function () { return fn.call(el, window.event); });
+        } else if (el && el.length) {
+          for (var i = 0; i < el.length; i++) {
+            addEvent(el[i], type, fn);
+          }
+        }
+      };
+    }
+  })();
+</script>
+</head>
+<body>
 
+<style>
+body{
+  background-color:#222;
+}
+video {
+  float: left;
+  width: 50%;
+}
 
-function setCurTime(interv) { 
-	if(typeof interv == "undefined") interv=1;
-	var currentTime =  interv*document.querySelector('#frameToSet').value/fps;
-	console.log(currentTime);
-    vid2.currentTime=currentTime;
-} 
+#controls {
+  clear: left;
+  color:#ddd;
 
-var now,then, first;
-var then;
+}
+</style>
+
+  <p id="controls">
+    <input id='frameToSet' type="number" placeholder="set initial frame" />
+    <button onclick="setCurTime()" type="button">Set time current frame</button>
+    <input id='speed' type="number" placeholder="speed (n cámaras)" />
+    <input type="button" id="play" value="play">
+    <span id="position">00:00</span> / <span id="duration">loading...</span>
+    <input type="range" value="0" id="scrub" />
+  </p>
+  <video preload="auto" id="v0">
+    <source src="_sources/bunny.mp4" />
+  </video>    
+  <video preload="auto" id="v1">
+    <source src="_sources/bunny.mp4" />
+  </video>
+ 
+<script>
+var vid = document.querySelector('#v0'),
+    vid2 = document.querySelector('#v1'),
+    togglePlay = document.querySelector('#play'),
+    position = document.querySelector('#position'),
+    ready = false,
+    controls = document.querySelector('#controls'),
+    scrub = document.querySelector('#scrub');
+
+var fps=24.038;
+var now;
+var then = Date.now();
 var interval = 1000/fps;
 var delta;
-
 // For this example
-var counter = 0;
-function startPlaying(){
-	 then = Date.now();
-	 first = then;
+    var counter = 0;
+    var first = then;
+function setCurTime() { 
+  var currentTime =  document.querySelector('#frameToSet').value/fps;
+  vid.currentTime=currentTime;
+} 
 
-     vid.play();
-     playAtCurrentFrameInterval();
-}
-function playAtCurrentFrameInterval() {
-
-    requestAnimationFrame(playAtCurrentFrameInterval);
-    now = Date.now();
-    delta = now - then;
-     
-    if (delta > interval) {
-        // update time stuffs
-         
-        // Just `then = now` is not enough.
-        // Lets say we set fps at 10 which means
-        // each frame must take 100ms
-        // Now frame executes in 16ms (60fps) so
-        // the loop iterates 7 times (16*7 = 112ms) until
-        // delta > interval === true
-        // Eventually this lowers down the FPS as
-        // 112*10 = 1120ms (NOT 1000ms).
-        // So we have to get rid of that extra 12ms
-        // by subtracting delta (112) % interval (100).
-        // Hope that makes sense.
-         
-        then = now - (delta % interval);
-         
-        var time_el = (then - first)/1000;
-        var counterObj=document.getElementById('counter')
-        counterObj.innerHTML = ++counter + 'f / ' + parseInt(time_el) + 's = ' + parseInt(counter/time_el) + 'fps';
-        setCurTime(counter);
-
+addEvent(togglePlay, 'click', function () {
+  if (ready) {
+    vid2.playbackRate = document.querySelector('#speed').value;//speed
+    if (vid.paused) {
+      if (vid.ended) {
+        vid.currentTime = 0;
+        vid2.currentTime = 0;
+      }
+      vid.currentTime = document.querySelector('#frameToSet').value/fps;
+      vid2.currentTime = document.querySelector('#frameToSet').value/fps;
+      vid.play();
+      this.value = "pause";
+    } else {
+      vid.pause();
+      this.value = "play";
     }
+  }
+});
+
+function seek() {
+  scrub.value = vid2.currentTime = this.currentTime;
 }
-    
-</script> 
 
+addEvent(vid, 'seeking', seek);
+addEvent(vid, 'seeked', seek);
 
-</body> 
+addEvent(vid, 'play', function () {
+  vid2.play();
+});
+
+addEvent(vid, 'pause', function () {
+  vid2.pause();
+})
+
+addEvent(vid, 'timeupdate', function () {
+  //This will happen every 250ms 
+  // I need to use requestAnimationFrame since it can run every 16ms
+  position.innerHTML = asTime(this.currentTime);
+  scrub.value = this.currentTime;
+
+  
+});
+
+addEvent(vid, 'ended', function () {
+  togglePlay.value = "play";
+});
+
+addEvent(vid, 'canplay', function () {
+  vid2.muted = true;
+  ready = true;
+  document.querySelector('#duration').innerHTML = asTime(this.duration);
+
+  scrub.setAttribute('max', this.duration);
+  addEvent(scrub, 'change', function () {
+    vid.currentTime = this.value;
+    vid2.currentTime = this.value;
+  });
+});
+
+function asTime(t) {
+  t = Math.round(t);
+  var s = t % 60;
+  var m = Math.floor(t / 60);
+  
+  return two(m) + ':' + two(s);
+}
+
+function two(s) {
+  s += "";
+  if (s.length < 2) s = "0" + s;
+  return s;
+}
+</script>
+
+</body>
 </html>
