@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<!-- Sync videos using listener -->
+<html lang="en">
+<head>
+<meta charset=utf-8>
+<title></title>
+<script>
+  var addEvent = (function () {
+  if (document.addEventListener) {
+    return function (el, type, fn) {
+      if (el && el.nodeName || el === window) {
+        el.addEventListener(type, fn, false);
+      } else if (el && el.length) {
+        for (var i = 0; i < el.length; i++) {
+          addEvent(el[i], type, fn);
+        }
+      }
+    };
+  } else {
+      return function (el, type, fn) {
+        if (el && el.nodeName || el === window) {
+          el.attachEvent('on' + type, function () { return fn.call(el, window.event); });
+        } else if (el && el.length) {
+          for (var i = 0; i < el.length; i++) {
+            addEvent(el[i], type, fn);
+          }
+        }
+      };
+    }
+  })();
+</script>
+</head>
+<body>
+
+<style>
+body{
+  background-color:#222;
+}
+video {
+  float: left;
+  width: 50%;
+}
+
+#controls {
+  clear: left;
+  color:#ddd;
+
+}
+</style>
+
+  <p id="controls">
+    <input id='frameToSet' type="number" placeholder="set initial frame" />
+    <button onclick="setCurTime()" type="button">Set time current frame</button>
+    <input id='speed' type="number" placeholder="speed (n cámaras)" />
+    <input type="button" id="play" value="play">
+    <span id="position">00:00</span> / <span id="duration">loading...</span>
+    <input type="range" value="0" id="scrub" />
+  </p>
+  <video preload="auto" id="v0">
+    <source src="_sources/bunny.mp4" />
+  </video>    
+  <video preload="auto" id="v1">
+    <source src="_sources/bunny.mp4" />
+  </video>
+ 
+<script>
+var vid = document.querySelector('#v0'),
+    vid2 = document.querySelector('#v1'),
+    togglePlay = document.querySelector('#play'),
+    position = document.querySelector('#position'),
+    ready = false,
+    controls = document.querySelector('#controls'),
+    scrub = document.querySelector('#scrub');
+
+var fps=24.038;
+var now;
+var then = Date.now();
+var interval = 1000/fps;
+var delta;
+// For this example
+    var counter = 0;
+    var first = then;
+function setCurTime() { 
+  var currentTime =  document.querySelector('#frameToSet').value/fps;
+  vid.currentTime=currentTime;
+} 
+
+addEvent(togglePlay, 'click', function () {
+  if (ready) {
+    vid2.playbackRate = document.querySelector('#speed').value;//speed
+    if (vid.paused) {
+      if (vid.ended) {
+        vid.currentTime = 0;
+        vid2.currentTime = 0;
+      }
+      vid.currentTime = document.querySelector('#frameToSet').value/fps;
+      vid2.currentTime = document.querySelector('#frameToSet').value/fps;
+      vid.play();
+      this.value = "pause";
+    } else {
+      vid.pause();
+      this.value = "play";
+    }
+  }
+});
+
+function seek() {
+  scrub.value = vid2.currentTime = this.currentTime;
+}
+
+addEvent(vid, 'seeking', seek);
+addEvent(vid, 'seeked', seek);
+
+addEvent(vid, 'play', function () {
+  vid2.play();
+});
+
+addEvent(vid, 'pause', function () {
+  vid2.pause();
+})
+
+addEvent(vid, 'timeupdate', function () {
+  //This will happen every 250ms 
+  // I need to use requestAnimationFrame since it can run every 16ms
+  position.innerHTML = asTime(this.currentTime);
+  scrub.value = this.currentTime;
+
+  
+});
+
+addEvent(vid, 'ended', function () {
+  togglePlay.value = "play";
+});
+
+addEvent(vid, 'canplay', function () {
+  vid2.muted = true;
+  ready = true;
+  document.querySelector('#duration').innerHTML = asTime(this.duration);
+
+  scrub.setAttribute('max', this.duration);
+  addEvent(scrub, 'change', function () {
+    vid.currentTime = this.value;
+    vid2.currentTime = this.value;
+  });
+});
+
+function asTime(t) {
+  t = Math.round(t);
+  var s = t % 60;
+  var m = Math.floor(t / 60);
+  
+  return two(m) + ':' + two(s);
+}
+
+function two(s) {
+  s += "";
+  if (s.length < 2) s = "0" + s;
+  return s;
+}
+</script>
+
+</body>
+</html>

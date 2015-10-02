@@ -1,0 +1,45 @@
+<script type="text/javascript">
+    var fps = 24;//MAX is 60. To set it as 60 is better to put 120, it will force to exactly 60.
+    var now;
+    var then = Date.now();
+    var interval = 1000/fps;
+    var delta;
+
+    // For this example
+    var counter = 0;
+    var first = then;
+      
+    function draw() {
+         
+        requestAnimationFrame(draw);
+         
+        now = Date.now();
+        delta = now - then;
+         
+        if (delta > interval) {
+            // update time stuffs
+             
+            // Just `then = now` is not enough.
+            // Lets say we set fps at 10 which means
+            // each frame must take 100ms
+            // Now frame executes in 16ms (60fps) so
+            // the loop iterates 7 times (16*7 = 112ms) until
+            // delta > interval === true
+            // Eventually this lowers down the FPS as
+            // 112*10 = 1120ms (NOT 1000ms).
+            // So we have to get rid of that extra 12ms
+            // by subtracting delta (112) % interval (100).
+            // Hope that makes sense.
+             
+            then = now - (delta % interval);
+             
+            var time_el = (then - first)/1000;
+            var counterObj=document.getElementById('counter')
+            counterObj.innerHTML = ++counter + 'f / ' + parseInt(time_el) + 's = ' + parseInt(counter/time_el) + 'fps';
+        }
+    }
+     
+    draw();
+    //commeent
+</script>
+<div id="counter"></div>
